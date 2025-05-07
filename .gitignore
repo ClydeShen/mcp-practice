@@ -2,6 +2,8 @@
 
 # Dependencies
 /node_modules
+/frontend/node_modules
+/backend/*/node_modules
 /.pnp
 .pnp.js
 
@@ -98,3 +100,15 @@ Desktop.ini
 # Docusaurus cache and build folder
 .docusaurus
 docusaurus.config.js.bak 
+
+# AWS SAM CLI and build artifacts
+.aws-sam/
+**/packaged.yaml
+**/samconfig.toml
+
+# TypeScript compilation output (more specific for packages)
+packages/**/dist/
+backend/**/dist/
+
+# IDE specific to SAM/Lambda local testing (if you use VSCode)
+.vscode/launch.json
