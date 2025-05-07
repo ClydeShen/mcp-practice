@@ -1,0 +1,118 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Phase 4 - Setup Nova Sonic and Voice I/O
+
+## 1. Phase Objective & Business Context (One NZ Agentic Voice PoC)
+
+**Overall Goal for this Phase:** To fully realise the voice-enabled agentic architecture by integrating Amazon Nova Sonic for real-time speech-to-text (STT) and text-to-speech (TTS). This will transform the text-based PoC into a voice-interactive system, showcasing the primary objective of a sophisticated voice agent for One NZ.
+
+**Key Business Value Proposition for this Phase:**
+*   Demonstrate a complete, voice-driven AI agent capable of natural conversation.
+*   Showcase the technical feasibility of integrating advanced speech AI (Nova Sonic) with the existing reasoning (Claude) and data fetching (MCP) backend.
+*   Provide a compelling PoC of an enhanced customer interaction experience.
+
+## 2. Functional Requirements for Phase 4
+
+*(Reference: `instruction/business-requirement.md`)*
+
+*   **POC_FUNC_001_Voice_With_Nova_Sonic**:
+    *   **Description**: System MUST allow customers to engage in a real-time, voice-based conversation via the frontend using Amazon Nova Sonic on Bedrock.
+    *   **Acceptance_Criteria**: Customer can initiate voice session; frontend establishes bidirectional audio stream with Nova Sonic; Nova Sonic performs STT; STT transcript available to frontend logic.
+
+*   **POC_FUNC_002_Delegate_To_Orchestrator_From_Voice**:
+    *   **Description**: When voice request (STT transcript) requires complex reasoning/data, frontend MUST delegate by sending transcript to `TestOrchestratorLambda`.
+    *   **Acceptance_Criteria**: Orchestrator correctly triggered with transcript; Claude/MCP invoked as needed.
+
+*   **POC_FUNC_005_Text_To_Nova_Sonic_TTS**:
+    *   **Description**: Textual output from `TestOrchestratorLambda` MUST be relayed from frontend to Nova Sonic (via stream) for TTS synthesis.
+    *   **Acceptance_Criteria**: Frontend sends text to Nova Sonic; Nova Sonic synthesizes speech; synthesized speech streamed to and played by frontend.
+
+*   **POC_FUNC_006_Context_Awareness_Voice**:
+    *   **Description**: System MUST demonstrate contextual awareness within a voice session, incorporating info from previous STT/TTS turns.
+    *   **Acceptance_Criteria**: System correctly answers follow-up voice questions relying on prior voice conversation context.
+
+*   **POC_FUNC_007_E2E_Voice_Flow**:
+    *   **Description**: All components MUST be integrated for a complete end-to-end voice interaction flow (STT -> Orchestrator -> MCP -> Claude -> Orchestrator -> TTS).
+    *   **Acceptance_Criteria**: Customer asks complex voice query requiring data lookup; system processes through all components; customer receives relevant synthesized spoken answer.
+
+*   **POC_FUNC_008_Manageable_Use_Cases (Voice Demo)**:
+    *   **Acceptance_Criteria**: System successfully handles predefined voice-based PoC use cases.
+
+*   **POC_FUNC_009_Easy_Setup_Demo (Voice Demo)**:
+    *   **Acceptance_Criteria**: Clear instructions for voice-based demo setup.
+
+## 3. Technical Implementation Tasks & Requirements for Phase 4
+
+*(Reference: `instruction/main.md`, `instruction/technical-requriement.md`)*
+
+### Task 4.1: Verify Amazon Nova Sonic Model Access
+*   **Technical_Objective**: Ensure Nova Sonic model is activated and accessible for bidirectional streaming.
+*   **Actions**: AWS Console: verify model access, note Model ID and region. SDK/CLI: initial list/describe model.
+*   **Works_Properly_Indicator**: Confirmed access, documented Model ID.
+
+### Task 4.2: Define IAM for Frontend/Nova Sonic Interaction
+*   **Technical_Objective**: Define IAM permissions for the entity establishing the bidirectional stream with Nova Sonic.
+*   **Technical Requirements from `main.md`**: `TR_010_Secure_AWS_Service_Access`.
+*   **Actions**: Create/update IAM role/policy. Key permission: `bedrock:InvokeModelWithResponseStream` (or equivalent for Nova Sonic streaming) on the Nova Sonic model ARN.
+    *   The AWS SDK for JavaScript v3 for Bedrock Runtime streaming typically uses credentials from the environment (e.g., Cognito Identity Pool for browser apps, or backend role if proxied). For this PoC, ensure the credentials used by the frontend have this permission.
+*   **Works_Properly_Indicator**: IAM Policy correctly defined for Nova Sonic streaming.
+
+### Task 4.3: Implement Frontend Microphone Access & Audio Capture
+*   **Technical_Objective**: Enable frontend to request microphone access, capture audio, and prepare it for streaming.
+*   **Technical Requirements from `main.md`**: `TR_001_Voice_Input_Processing` (capture part).
+*   **Actions**: Use browser Web APIs (`navigator.mediaDevices.getUserMedia`) to access microphone. Handle permissions. Convert audio to format suitable for Nova Sonic (e.g., PCM, 16-bit, typically 16kHz or 8kHz sample rate).
+*   **Works_Properly_Indicator**: User can grant/deny mic permission; audio captured in correct format.
+
+### Task 4.4: Implement Bidirectional Streaming Client for Nova Sonic
+*   **Technical_Objective**: Implement frontend logic (JavaScript/TypeScript) to establish and manage bidirectional audio stream with Nova Sonic via AWS SDK for JavaScript v3 (`@aws-sdk/client-bedrock-runtime`'s `InvokeModelWithResponseStreamCommand`).
+*   **Technical Requirements from `main.md`**: `TR_008_Bidirectional_Streaming`.
+*   **Actions**:
+    1.  Use AWS SDK to send audio chunks from microphone to Nova Sonic.
+    2.  Receive STT results (transcript events) from Nova Sonic.
+    3.  Implement logic to send text to Nova Sonic for TTS.
+    4.  Receive synthesized audio chunks from Nova Sonic and play them using browser audio APIs (e.g., Web Audio API).
+    5.  Handle stream lifecycle (start, end, errors).
+*   **Works_Properly_Indicator**: Basic voice loop: send audio, get STT, send text, get TTS audio played.
+
+### Task 4.5: Integrate Nova Sonic Stream with Orchestrator API for Full Voice Loop
+*   **Technical_Objective**: Modify frontend to: Send STT transcript to `TestOrchestratorLambda` (via API Gateway); receive text response; send this text to Nova Sonic for TTS; play synthesized audio.
+*   **Actions**:
+    1.  After Nova Sonic STT event, extract transcript.
+    2.  Call the existing API Gateway endpoint (from Phase 3) with this transcript as the "prompt".
+    3.  Receive text response from `TestOrchestratorLambda`.
+    4.  Send this text to the Nova Sonic stream for TTS.
+*   **Works_Properly_Indicator**: Frontend orchestrates STT -> API Call -> TTS using Nova Sonic.
+
+### Task 4.6: Develop Basic Chat UI for Voice Interaction
+*   **Technical_Objective**: Enhance frontend UI (MUI components) for voice: microphone button, visual feedback (listening, processing, speaking), display STT transcript and TTS responses (optional).
+*   **Technical Requirements from `main.md`**: `TR_001_Voice_Input_Processing`, `TR_007_Voice_Output_Generation` (UI aspects).
+*   **Actions**: Update Next.js page/components. Add mic button to start/stop recording/streaming. Show system status.
+*   **Works_Properly_Indicator**: UI accurately reflects voice interaction state.
+
+### Task 4.7: End-to-End Voice Test
+*   **Technical_Objective**: Validate complete voice flow: user speaks -> Nova Sonic STT -> frontend -> Orchestrator (-> MCP -> Claude) -> Orchestrator -> frontend -> Nova Sonic TTS -> user hears response.
+*   **Actions**: Perform scenario-based manual testing using predefined voice queries, including those requiring MCP data. Analyse logs.
+*   **Works_Properly_Indicator**: PoC voice use cases completed successfully. Response relevant, timely, uses MCP data.
+
+## 4. Key Deliverables for Phase 4
+
+*   Confirmation of Nova Sonic model access and its Model ID.
+*   Documented IAM setup for Nova Sonic streaming access.
+*   Frontend source code for microphone access, audio capture, Nova Sonic bidirectional streaming, and voice UI.
+*   Updated `TestOrchestratorLambda` (if any changes needed for voice context, though unlikely if frontend handles transcript).
+*   Demonstrable voice-based end-to-end interaction with the AI system.
+*   Test results (recordings, logs) of successful end-to-end voice flow.
+*   Completed PoC documentation (QS_008).
+
+## 5. General PoC Considerations for this Phase
+
+*   **Voice Interaction Quality (QS_006, NFR_ID: POC_NFR_004)**: Pay attention to STT accuracy, TTS naturalness, and overall latency.
+*   **Modularity (TR_009)** of frontend voice components.
+*   Finalise **Demo Readiness (QS_003)** for the full voice PoC.
+
+
+
+*   Complete **Security Review (TECH_TASK_043 from `technical-requriement.md`)** for the PoC.

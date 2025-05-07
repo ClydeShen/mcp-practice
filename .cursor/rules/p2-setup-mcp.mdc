@@ -1,0 +1,174 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Phase 2 - Setup MCP Layer with Mock Data & Integrate with Orchestrator
+
+## 1. Phase Objective & Business Context (One NZ Agentic Voice PoC)
+
+**Overall Goal for this Phase:** To enhance the AI's capability by enabling it to fetch and utilise external data through a Model Context Protocol (MCP) layer, albeit with mock data initially. This demonstrates dynamic data retrieval, a crucial step for providing more relevant, specific, and personalised customer support for One NZ.
+
+**Key Business Value Proposition for this Phase:**
+
+- Showcase the system's ability to go beyond its pre-trained knowledge by accessing external information sources (simulated).
+- Illustrate how Claude 3 Sonnet can orchestrate tasks that involve data lookups.
+- Build a more complete backend core, capable of data-informed reasoning, before connecting to a user interface.
+
+## 2. Functional Requirements for Phase 2
+
+_(Reference: `instruction/business-requirement.md`)_
+
+- **POC_FUNC_003_Claude_Instructs_MCP**:
+
+  - **Description**: Claude 3 Sonnet (via the `TestOrchestratorLambda`) MUST be able to instruct the MCP layer (`MCPLambda`) to fetch relevant data.
+  - **Components_Responsible**: Claude 3 Sonnet (Bedrock), `TestOrchestratorLambda`, `MCPLambda`.
+  - **Mechanism**: `TestOrchestratorLambda`, potentially guided by Claude's output or its own logic, determines data needs and invokes `MCPLambda` with parameters to specify the data required. `MCPLambda` returns mock data.
+  - **Acceptance_Criteria**: `MCPLambda` successfully retrieves/returns specified mock data based on instructions/parameters from `TestOrchestratorLambda`.
+
+- **POC_FUNC_004_Claude_Formulates_Text (Enhanced with MCP Data)**:
+
+  - **Description**: Claude 3 Sonnet MUST formulate a coherent and contextually appropriate textual response, now potentially incorporating or influenced by the mock data retrieved via `MCPLambda`.
+  - **Component_Responsible**: Claude 3 Sonnet (Bedrock), `TestOrchestratorLambda`, `MCPLambda`.
+  - **Acceptance_Criteria**: Claude 3 Sonnet generates accurate textual output that reflects awareness or use of the mock data when relevant.
+
+- **POC_FUNC_006_Context_Awareness_Text (Enhanced with MCP Data Awareness)**:
+  - **Description**: The `TestOrchestratorLambda` should now manage context that might include fetched mock data, passing relevant information to Claude for its reasoning process.
+  - **Acceptance_Criteria**: Claude's responses, via the orchestrator, correctly reflect or utilize mock data that was conditionally fetched based on the prompt or prior steps.
+
+## 3. Technical Implementation Tasks & Requirements for Phase 2
+
+_(Reference: `instruction/main.md`, `instruction/technical-requriement.md`)_
+
+### Task 2.1: Define IAM & Create `MCPLambda` with Mock Data
+
+- **Technical_Objective**: Create an `MCPLambda` with an IAM role. This Lambda will serve mock data based on input, simulating the MCP layer.
+- **Technical Requirements from `main.md`**:
+  - `TR_005_Dynamic_Data_Fetching_MCP` (initial implementation with mocks).
+  - `TR_010_Secure_AWS_Service_Access`.
+- **Actions**:
+  1.  **Define IAM Role & Policy for `MCPLambda`**:
+      - **Trust Policy**: Allow `lambda.amazonaws.com`.
+      - **Permissions Policy Example**:
+        ```json
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:aws:logs:<your-region>:<your-account-id>:log-group:/aws/lambda/<MCPLambdaName>:*"
+            }
+            // Add s3:GetObject if reading mock data from S3:
+            // {
+            //     "Effect": "Allow",
+            //     "Action": "s3:GetObject",
+            //     "Resource": "arn:aws:s3:::<your-mock-data-bucket>/<path-to-mock-data.json>"
+            // }
+          ]
+        }
+        ```
+      - Replace placeholders.
+  2.  **Create `MCPLambda`**:
+      - Node.js (with TypeScript if preferred) or Python.
+      - Handler should:
+        - Accept an event object (e.g., `{ "dataType": "customerPlanInfo", "customerId": "123" }`).
+        - Based on `dataType` (and other params), return predefined mock data.
+        - **Mock Data Source**:
+          - Option A (Simple): Hardcode mock data directly in the Lambda function.
+          - Option B (Slightly more flexible): Include a JSON file (e.g., `mock-data.json`) in the Lambda deployment package and read from it.
+          - Option C (If testing S3): Upload `mock-data.json` to an S3 bucket and have the Lambda fetch it (ensure S3 permissions).
+          - Example `mock-data.json` content:
+            ```json
+            {
+              "customerPlanInfo": {
+                "123": {
+                  "name": "Aroha Patel",
+                  "plan": "Unlimited Talk & Text NZ",
+                  "dataAllowance": "50GB"
+                },
+                "456": {
+                  "name": "Ben Smith",
+                  "plan": "Prepay Casual",
+                  "balance": "$10.50"
+                }
+              },
+              "productInfo": {
+                "P001": {
+                  "productName": "SuperFast Fibre",
+                  "price": "$89.99/month"
+                }
+              }
+            }
+            ```
+        - Log the request and the mock data being returned.
+        - Return the mock data.
+      - Deploy with the created IAM role.
+- **Testing_Strategy**:
+  - IAM Policy Review.
+  - MCP Interface Definition (conceptual: document expected input/output).
+  - Lambda Unit Tests (TDD: test mock data retrieval for various inputs, "data not found" cases, S3 mock if used).
+- **Works_Properly_Indicator**: Unit tests pass. `MCPLambda` returns expected mock data.
+
+### Task 2.2: Integrate MCP with `TestOrchestratorLambda`
+
+- **Technical_Objective**: Modify `TestOrchestratorLambda` to invoke `MCPLambda` to fetch mock data and use this data in its interaction with Claude 3 Sonnet. Update `TestOrchestratorLambda`'s IAM role.
+- **Technical Requirements from `main.md`**:
+  - `TR_003_Complex_Query_Delegation_Text_Based` (now incorporating MCP).
+  - `TR_006_Context_Management_Text_Based` (context now can include fetched data).
+- **Actions**:
+  1.  **Update `TestOrchestratorLambda` IAM Role**: Add `lambda:InvokeFunction` permission for the `MCPLambda` ARN.
+      - Example addition to policy:
+        ```json
+        {
+          "Effect": "Allow",
+          "Action": "lambda:InvokeFunction",
+          "Resource": "arn:aws:lambda:<your-region>:<your-account-id>:function:<MCPLambdaName>"
+        }
+        ```
+  2.  **Modify `TestOrchestratorLambda` Code**:
+      - Identify conditions to call `MCPLambda` (e.g., specific keywords in the user's prompt like "What is my plan?" or "Tell me about SuperFast Fibre").
+      - If condition met:
+        - Construct payload for `MCPLambda` (e.g., `{"dataType": "customerPlanInfo", "customerId": "123"}`).
+        - Invoke `MCPLambda` using AWS SDK (`LambdaClient`, `InvokeCommand`).
+        - Receive and parse mock data from `MCPLambda`.
+      - Incorporate fetched mock data into the prompt for Claude 3 Sonnet. For example:
+        `User asks: "What is my plan?". Mock data found: Plan is "Unlimited Talk & Text NZ", Data is "50GB". Formulate a helpful answer.`
+      - Alternatively, Claude could be prompted to request the data type, and the orchestrator calls MCP based on Claude's request. For PoC, explicit orchestrator logic is simpler.
+      - Send the combined/augmented prompt to Claude.
+- **Testing_Strategy**:
+  - IAM Update Verification.
+  - Orchestrator Lambda Unit Tests (TDD: mock `MCPLambda` client, test logic for calling MCP, test processing of mock data and prompt augmentation).
+- **Works_Properly_Indicator**: Unit tests for `TestOrchestratorLambda` pass, showing successful (mocked) `MCPLambda` invocation and data use.
+
+### Task 2.3: Test `TestOrchestratorLambda` -> `MCPLambda` -> Claude Flow
+
+- **Technical_Objective**: Verify the end-to-end flow where `TestOrchestratorLambda` calls `MCPLambda`, gets mock data, and then calls Claude 3 Sonnet using this data.
+- **Actions**:
+  1.  Invoke the deployed `TestOrchestratorLambda` (via AWS console test event or CLI) with a prompt designed to trigger MCP data fetching (e.g., "What is customer 123's current mobile plan?").
+  2.  Analyse CloudWatch Logs for `TestOrchestratorLambda` and `MCPLambda`:
+      - Verify `TestOrchestratorLambda` invoked `MCPLambda` with correct parameters.
+      - Verify `MCPLambda` returned the expected mock data.
+      - Verify `TestOrchestratorLambda` augmented the prompt for Claude with the mock data.
+      - Inspect Claude's response to ensure it reflects or uses the mock data appropriately.
+- **Works_Properly_Indicator**: Logs confirm invocation sequence. Claude's response demonstrates awareness/use of mock data.
+
+## 4. Key Deliverables for Phase 2
+
+- Documented IAM Role and Policy for `MCPLambda`.
+- Source code for `MCPLambda` (including mock data or S3 fetching logic).
+- Deployed `MCPLambda` in AWS.
+- Updated IAM Role and Policy for `TestOrchestratorLambda`.
+- Updated source code for `TestOrchestratorLambda` with MCP integration logic.
+- Test results (logs) demonstrating the `TestOrchestratorLambda` -> `MCPLambda` -> Claude 3 Sonnet flow.
+
+## 5. General PoC Considerations for this Phase
+
+- Continue adherence to Quality Standards (QS_002, QS_007, QS_008).
+- **Modular Architecture (TR_009, NFR_ID: POC_NFR_002)**: Ensure Lambdas are distinct and interact via defined interfaces (Lambda invocation).
+- Focus on clear logging for traceability (NFR_ID: POC_NFR_003).
