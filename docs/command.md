@@ -26,3 +26,10 @@ aws bedrock-runtime invoke-model `
   --body file://D:/Repo/mcp-practice/input.json `
   output.json
 ```
+
+
+`Remove-Item D:\Repo\mcp-practice\backend\TestOrchestratorLambda\packaged.yaml`
+
+`pnpm --filter @one-nz-poc/test-orchestrator-lambda run package`
+
+`pnpm --filter @one-nz-poc/test-orchestrator-lambda run deploy`
