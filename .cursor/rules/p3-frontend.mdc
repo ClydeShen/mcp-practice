@@ -86,15 +86,23 @@ alwaysApply: false
 *   **Works_Properly_Indicator**: User can type query, send to backend, see textual response from Claude displayed.
 
 ### Task 3.3: End-to-End Test: Frontend -> API Gateway -> `TestOrchestratorLambda` -> `MCPLambda` -> Claude
-*   **Technical_Objective**: Validate the complete text-based flow from the frontend UI to Claude 3 Sonnet, including data fetching via `MCPLambda`.
+*   **Technical_Objective**: Validate the complete text-based flow from the frontend UI to Claude 3 Sonnet, including **LLM-driven data fetching via `MCPLambda`**.
 *   **Actions**:
     1.  Using the developed frontend UI:
-        *   Input a query designed to trigger MCP data fetching in `TestOrchestratorLambda` (e.g., "What is the plan for customer 123?").
+        *   Input a query designed to trigger MCP data fetching in `TestOrchestratorLambda` (e.g., "What is the plan for customer 123?" or a query that requires a tool based on system prompt).
         *   Submit the query.
-    2.  Observe the response displayed on the frontend. It should reflect mock data use.
-    3.  Review CloudWatch Logs for API Gateway, `TestOrchestratorLambda`, and `MCPLambda` to trace the request and verify each step's success and data flow.
-    4.  Test with queries that *don't* trigger MCP to ensure that flow also works.
-*   **Works_Properly_Indicator**: Frontend displays coherent response from Claude that correctly incorporates/reflects mock data fetched via `MCPLambda` when appropriate.
+    2.  Observe the response displayed on the frontend. It should reflect mock data use if a tool was called.
+    3.  Review CloudWatch Logs for API Gateway, `TestOrchestratorLambda`, and `MCPLambda` to trace the request and verify:
+        *   The initial prompt from frontend reached `TestOrchestratorLambda`.
+        *   `TestOrchestratorLambda` sent the initial prompt to Claude.
+        *   **Claude's first response (if a tool was needed) included the expected formatted action/tool request.**
+        *   **`TestOrchestratorLambda` correctly parsed the tool request and its parameters.**
+        *   `TestOrchestratorLambda` invoked `MCPLambda` with the correct parameters derived from Claude's request.
+        *   `MCPLambda` returned the expected mock data.
+        *   **`TestOrchestratorLambda` sent the MCP data back to Claude in a second invocation (verify messages structure).**
+        *   Claude's final response (incorporating the mock data if a tool was used) was relayed back through API Gateway to the frontend.
+    4.  Test with queries that *don't* trigger MCP/tool use to ensure that simpler flow also works correctly.
+*   **Works_Properly_Indicator**: Frontend displays coherent response from Claude that correctly incorporates/reflects mock data fetched via `MCPLambda` when a tool use was appropriately triggered by Claude. Logs confirm the full multi-step invocation sequence when a tool is used.
 
 ## 4. Key Deliverables for Phase 3
 

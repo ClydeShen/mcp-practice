@@ -7,7 +7,7 @@ alwaysApply: false
 
 ## 1. Phase Objective & Business Context (One NZ Agentic Voice PoC)
 
-**Overall Goal for this Phase:** To establish the foundational AI reasoning capability of the Proof of Concept (PoC). This involves verifying access to and enabling interaction with the advanced Large Language Model (LLM), Claude 3 Sonnet. The primary business driver is to demonstrate the system's core intelligence in understanding and processing complex queries textually, which is the first step towards an enhanced, AI-driven customer interaction system for One NZ.
+**Overall Goal for this Phase:** To establish the foundational AI reasoning capability of the Proof of Concept (PoC). This involves verifying access to and enabling interaction with the advanced Large Language Model (LLM), Claude 3 Sonnet. The primary business driver is to demonstrate the system's core intelligence in understanding and processing complex queries textually. **This phase lays the groundwork for the `TestOrchestratorLambda` to manage more sophisticated interactions, including the Model Context Protocol (MCP) driven by Claude in later phases.**
 
 **Key Business Value Proposition for this Phase:**
 *   Demonstrate technical feasibility of using a state-of-the-art LLM (Claude 3 Sonnet) for advanced reasoning.
@@ -19,7 +19,7 @@ alwaysApply: false
 *(Reference: `instruction/business-requirement.md`)*
 
 *   **POC_FUNC_002_Delegate_To_Claude (Text-based foundation)**:
-    *   **Description**: When a text-based request is received by the Orchestration Layer, requiring complex reasoning or task planning, the system MUST delegate this to Claude 3 Sonnet.
+    *   **Description**: When a text-based request is received by the Orchestration Layer, requiring complex reasoning or task planning, the system MUST delegate this to Claude 3 Sonnet. **In this phase, this involves a direct invocation and response, setting the stage for future multi-step, tool-using dialogues.**
     *   **Components_Responsible**: Orchestration Layer (AWS Lambda: `TestOrchestratorLambda`), Claude 3 Sonnet (AWS Bedrock).
     *   **Mechanism**: The `TestOrchestratorLambda` is triggered (e.g., by a test event initially), passing necessary context (e.g., textual query). The `TestOrchestratorLambda` invokes Claude 3 Sonnet.
     *   **Acceptance_Criteria**: Based on the textual input to the `TestOrchestratorLambda`, Claude 3 Sonnet is correctly invoked with relevant input, and its response is processed.
@@ -48,7 +48,7 @@ alwaysApply: false
 *   **Works_Properly_Indicator**: Confirmation of access; Model ID documented. SDK/CLI test (later) successfully invokes model.
 
 ### Task 1.2: Define IAM & Create `TestOrchestratorLambda` (invokes Claude)
-*   **Technical_Objective**: Create an AWS Lambda function (`TestOrchestratorLambda`) with an IAM role granting necessary permissions to invoke Claude 3 Sonnet and write to CloudWatch Logs.
+*   **Technical_Objective**: Create an AWS Lambda function (`TestOrchestratorLambda`) with an IAM role granting necessary permissions to invoke Claude 3 Sonnet and write to CloudWatch Logs. **This Lambda will serve as the central orchestrator, initially for direct Claude invocations, and later for managing tool use and MCP interactions.**
 *   **Technical Requirements from `main.md`**:
     *   `TR_004_Advanced_Reasoning_LLM` (relevant parts for basic invocation).
     *   `TR_010_Secure_AWS_Service_Access` (IAM role with least privilege).
@@ -84,7 +84,7 @@ alwaysApply: false
         *   Handler function should:
             *   Accept an event object containing a `prompt` (string).
             *   Initialise the AWS Bedrock Runtime client.
-            *   Construct the `InvokeModelCommandInput` for Claude 3 Sonnet (using the obtained Model ID and input prompt). Specify `anthropic_version` (e.g., "bedrock-2023-05-31").
+            *   Construct the `InvokeModelCommandInput` for Claude 3 Sonnet (using the obtained Model ID and input prompt). Specify `anthropic_version` (e.g., "bedrock-2023-05-31"). **For Phase 1, this is a direct invocation. In later phases, this Lambda will also handle system prompts for tool use instructions and parse Claude's responses for action requests.**
             *   Send the command and receive the response.
             *   Parse the response from Claude (typically a stream of chunks; process and assemble the text).
             *   Log the input prompt and Claude's response.

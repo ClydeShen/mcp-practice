@@ -3,7 +3,6 @@ description:
 globs: 
 alwaysApply: false
 ---
-
 # Phase 2 - Setup MCP Layer with Mock Data & Integrate with Orchestrator
 
 ## 1. Phase Objective & Business Context (One NZ Agentic Voice PoC)
@@ -117,10 +116,10 @@ _(Reference: `instruction/main.md`, `instruction/technical-requriement.md`)_
 
 ### Task 2.2: Integrate MCP with `TestOrchestratorLambda`
 
-- **Technical_Objective**: Modify `TestOrchestratorLambda` to invoke `MCPLambda` to fetch mock data and use this data in its interaction with Claude 3 Sonnet. Update `TestOrchestratorLambda`'s IAM role.
+- **Technical_Objective**: Modify `TestOrchestratorLambda` to manage the multi-step interaction with Claude 3 Sonnet for tool use: receive user query, call Claude, parse Claude's response for tool use requests, invoke `MCPLambda` if a tool is requested, send `MCPLambda`'s output back to Claude for final response generation. Update `TestOrchestratorLambda`'s IAM role.
 - **Technical Requirements from `main.md`**:
-  - `TR_003_Complex_Query_Delegation_Text_Based` (now incorporating MCP).
-  - `TR_006_Context_Management_Text_Based` (context now can include fetched data).
+  - `TR_003_Complex_Query_Delegation_Text_Based` (implementing the tool use loop).
+  - `TR_006_Context_Management_Text_Based` (context now includes tool request/response cycles).
 - **Actions**:
   1.  **Update `TestOrchestratorLambda` IAM Role**: Add `lambda:InvokeFunction` permission for the `MCPLambda` ARN.
       - Example addition to policy:
@@ -132,31 +131,43 @@ _(Reference: `instruction/main.md`, `instruction/technical-requriement.md`)_
         }
         ```
   2.  **Modify `TestOrchestratorLambda` Code**:
-      - Identify conditions to call `MCPLambda` (e.g., specific keywords in the user's prompt like "What is my plan?" or "Tell me about SuperFast Fibre").
-      - If condition met:
-        - Construct payload for `MCPLambda` (e.g., `{"dataType": "customerPlanInfo", "customerId": "123"}`).
+      - **Initial Claude Invocation**: Send the user's query and conversation history to Claude 3 Sonnet, along with a system prompt instructing Claude on how to request actions/tools (e.g., by outputting a specific JSON structure like `{"tool_use": {"tool_name": "<action_name>", "tool_input": {<parameters>}}}`).
+      - **Parse Claude's Response**: Check Claude's output for a `tool_use` request.
+      - **If `tool_use` is requested**:
+        - Extract `tool_name` and `tool_input`.
+        - Construct payload for `MCPLambda` based on extracted parameters.
         - Invoke `MCPLambda` using AWS SDK (`LambdaClient`, `InvokeCommand`).
         - Receive and parse mock data from `MCPLambda`.
-      - Incorporate fetched mock data into the prompt for Claude 3 Sonnet. For example:
-        `User asks: "What is my plan?". Mock data found: Plan is "Unlimited Talk & Text NZ", Data is "50GB". Formulate a helpful answer.`
-      - Alternatively, Claude could be prompted to request the data type, and the orchestrator calls MCP based on Claude's request. For PoC, explicit orchestrator logic is simpler.
-      - Send the combined/augmented prompt to Claude.
+        - **Second Claude Invocation**: Re-invoke Claude 3 Sonnet. The `messages` array should include the original query, Claude's `tool_use` request, and a new message (e.g., role 'user') containing the data returned from `MCPLambda` (e.g., `CONTEXT_FROM_MCP_ACTION[<action_name>]: {<mcp_data>}`).
+        - Receive the final, data-informed response from Claude.
+      - **If no `tool_use` is requested**: Claude's first response is treated as the final answer.
+      - Manage conversation history, including the `tool_use` requests and MCP responses, for subsequent turns.
 - **Testing_Strategy**:
   - IAM Update Verification.
-  - Orchestrator Lambda Unit Tests (TDD: mock `MCPLambda` client, test logic for calling MCP, test processing of mock data and prompt augmentation).
-- **Works_Properly_Indicator**: Unit tests for `TestOrchestratorLambda` pass, showing successful (mocked) `MCPLambda` invocation and data use.
+  - Orchestrator Lambda Unit Tests (TDD):
+    - Mock Claude's first response to *include* a `tool_use` request.
+    - Verify `TestOrchestratorLambda` correctly parses the request and extracts parameters.
+    - Mock the `MCPLambda` client/invocation; verify it's called with correct parameters.
+    - Mock the `MCPLambda` response.
+    - Verify `TestOrchestratorLambda` correctly constructs the messages for the second Claude invocation, including the MCP data.
+    - Mock Claude's second response (the final answer) and verify `TestOrchestratorLambda` handles it.
+    - Test the path where Claude's first response *does not* contain a `tool_use` request.
+- **Works_Properly_Indicator**: Unit tests for `TestOrchestratorLambda` pass, demonstrating successful parsing of Claude's tool requests, (mocked) `MCPLambda` invocation, and correct construction of subsequent prompts to Claude with MCP data.
 
 ### Task 2.3: Test `TestOrchestratorLambda` -> `MCPLambda` -> Claude Flow
 
-- **Technical_Objective**: Verify the end-to-end flow where `TestOrchestratorLambda` calls `MCPLambda`, gets mock data, and then calls Claude 3 Sonnet using this data.
+- **Technical_Objective**: Verify the end-to-end flow: `TestOrchestratorLambda` calls Claude, Claude requests a tool, `TestOrchestratorLambda` calls `MCPLambda`, `MCPLambda` returns mock data, `TestOrchestratorLambda` calls Claude again with this data, Claude generates a final response.
 - **Actions**:
-  1.  Invoke the deployed `TestOrchestratorLambda` (via AWS console test event or CLI) with a prompt designed to trigger MCP data fetching (e.g., "What is customer 123's current mobile plan?").
+  1.  Invoke the deployed `TestOrchestratorLambda` (via AWS console test event or CLI) with a prompt designed to trigger a tool use by Claude (e.g., "What are the features of the One NZ Smart Plan?").
   2.  Analyse CloudWatch Logs for `TestOrchestratorLambda` and `MCPLambda`:
-      - Verify `TestOrchestratorLambda` invoked `MCPLambda` with correct parameters.
+      - Verify the initial prompt to Claude.
+      - Verify Claude's first response includes the `tool_use` JSON.
+      - Verify `TestOrchestratorLambda` correctly parsed the `tool_name` and `tool_input`.
+      - Verify `TestOrchestratorLambda` invoked `MCPLambda` with these parameters.
       - Verify `MCPLambda` returned the expected mock data.
-      - Verify `TestOrchestratorLambda` augmented the prompt for Claude with the mock data.
-      - Inspect Claude's response to ensure it reflects or uses the mock data appropriately.
-- **Works_Properly_Indicator**: Logs confirm invocation sequence. Claude's response demonstrates awareness/use of mock data.
+      - Verify `TestOrchestratorLambda` sent the MCP data back to Claude in the second invocation (check the `messages` structure).
+      - Inspect Claude's final response to ensure it reflects or uses the mock data appropriately.
+- **Works_Properly_Indicator**: Logs confirm the full tool-use invocation sequence. Claude's final response demonstrates awareness/use of mock data fetched via `MCPLambda`.
 
 ## 4. Key Deliverables for Phase 2
 
