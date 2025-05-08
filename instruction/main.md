@@ -28,12 +28,17 @@ _(Focus: Backend reasoning, data fetching, and text-based orchestration)_
 
 - **TR_004_Advanced_Reasoning_LLM**: The Orchestration Layer MUST use Claude 3 Sonnet on Bedrock for:
   - Deep understanding of complex user intents (received as text initially).
-  - Task planning (e.g., deciding if external data is needed based on text input).
-  - Formulating instructions for data retrieval via MCP.
-  - Generating coherent, context-aware textual responses.
-- **TR_005_Dynamic_Data_Fetching_MCP**: The system MUST implement a Model Context Protocol (MCP) layer capable of fetching data from predefined (mock or simple for PoC) sources (e.g., databases, APIs, knowledge bases) based on instructions from Claude 3 Sonnet.
-- **TR_003_Complex_Query_Delegation_Text_Based**: The Orchestration Layer (e.g., Lambda) MUST be able to process complex user queries (received as text) by engaging Claude 3 Sonnet for advanced reasoning and MCP for data retrieval if necessary.
-- **TR_006_Context_Management_Text_Based**: The Orchestration Layer MUST maintain conversational context (e.g., recent turns, key extracted information from text) within a session to inform responses from Claude 3 Sonnet during text-based interactions.
+  - Task planning, including determining when external data is required.
+  - **Formulating requests for data retrieval via MCP when necessary, using a defined format.**
+  - Generating coherent, context-aware textual responses, potentially after receiving requested data.
+- **TR_005_Dynamic_Data_Fetching_MCP**: The system MUST implement a Model Context Protocol (MCP) layer capable of fetching data from predefined (mock or simple for PoC) sources (e.g., databases, APIs, knowledge bases) **based on structured requests formulated by Claude 3 Sonnet and relayed/executed by the Orchestration Layer.**
+- **TR_003_Complex_Query_Delegation_Text_Based**: The Orchestration Layer (e.g., Lambda) MUST be able to process complex user queries (received as text) by:
+  1.  Engaging Claude 3 Sonnet with the query and relevant context.
+  2.  Analyzing Claude's response to **detect potential requests for external data/actions** via a defined mechanism (e.g., specific formatted output).
+  3.  If a data request is detected, invoking the MCP layer to retrieve the necessary data.
+  4.  Providing the retrieved data back to Claude 3 Sonnet in a subsequent invocation.
+  5.  Receiving the final, data-informed response from Claude.
+- **TR_006_Context_Management_Text_Based**: The Orchestration Layer MUST maintain conversational context within a session (e.g., recent turns, key extracted information, **state of MCP requests and returned data**) to inform subsequent interactions with Claude 3 Sonnet.
 
 ### Phase 3: Basic Frontend Integration (Text-Based)
 

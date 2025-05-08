@@ -54,51 +54,63 @@ This document outlines the testing strategy for each technical task within the r
 
 - **Task_Name**: Define IAM & Create `MCPLambda` with Mock Data
 - **Original_Reference**: Combines aspects of TECH_TASK_001 (IAM), TECH_TASK_002 (IaC for Lambda), TECH_TASK_030 (MCP Interface), TECH_TASK_031 (Mock MCP Data Sources)
-- **Technical_Objective**: Create an `MCPLambda` with an IAM role. This Lambda will serve mock data based on input, simulating the MCP layer.
+- **Technical_Objective**: Create an `MCPLambda` with an IAM role. This Lambda will receive parameters specifying required data (e.g., type, key) based on Claude's request (relayed by Orchestrator) and return corresponding mock data.
 - **Testing_Strategy**:
   1.  **IAM Policy Review (Manual)**:
-      - Review the IAM policy for the `MCPLambda` role. It needs CloudWatch Logs permissions. If mock data is to be read from S3, it needs `s3:GetObject` for the specific S3 object/path.
+      - Review the IAM policy for the `MCPLambda` role. Needs CloudWatch Logs. If reading from S3, needs `s3:GetObject` for the specific S3 object/path.
   2.  **IaC/Deployment (As per Task 1.2)**: Similar validation if IaC is used.
-  3.  **MCP Interface Definition (Conceptual)**: Document the expected input (e.g., data key) and output (mock data structure) for the `MCPLambda`.
+  3.  **MCP Interface Definition (Conceptual)**: Document the expected input parameters (e.g., `{ "dataType": "customerPlanInfo", "customerId": "123" }`) and output (mock data structure) for the `MCPLambda`.
   4.  **Lambda Unit Test (TDD Approach)**:
       - Test the `MCPLambda` handler.
-      - For hardcoded/bundled mock data: Verify correct data is returned for given inputs. Test for "data not found" scenarios.
-      - If reading from S3: Mock the S3 client, test S3 object retrieval logic, and data parsing.
-- **Best_Practice_Check**: IAM policy follows least privilege. Mock data structure is clear and reflects potential real data. Lambda code is clean and handles basic errors.
-- **Works_Properly_Indicator**: Unit tests pass. `MCPLambda` returns expected mock data for defined inputs when tested in isolation.
+      - Verify correct mock data is returned for given input parameters.
+      - Test error handling (e.g., requested data type or key not found in mock data).
+      - If reading from S3: Mock the S3 client, test S3 object retrieval/parsing.
+- **Best_Practice_Check**: IAM policy follows least privilege. Mock data structure is clear. Lambda handles parameters correctly.
+- **Works_Properly_Indicator**: Unit tests pass. `MCPLambda` returns expected mock data for defined input parameters.
 
 ### Task 2.2: Integrate MCP with `TestOrchestratorLambda`
 
 - **Task_Name**: Integrate MCP with `TestOrchestratorLambda`
 - **Original_Reference**: Adapts from TECH_TASK_032 (Integrate MCP with Orchestrator) and TECH_TASK_022 (Context Management - basic form)
-- **Technical_Objective**: Modify `TestOrchestratorLambda` to invoke `MCPLambda` to fetch mock data and use this data in its interaction with Claude 3 Sonnet. Update IAM for `TestOrchestratorLambda`.
+- **Technical_Objective**: Modify `TestOrchestratorLambda` to:
+  1. Include instructions in the initial prompt to Claude on how to request external data (e.g., using a specific format like `ACTION: MCP_FETCH_...`).
+  2. Parse Claude's responses to detect such action requests.
+  3. If a request is detected, invoke `MCPLambda` with the appropriate parameters.
+  4. Re-invoke Claude with the original context _plus_ the data returned from `MCPLambda`.
+  5. Update `TestOrchestratorLambda`'s IAM role to allow invoking `MCPLambda`.
 - **Testing_Strategy**:
   1.  **IAM Update Verification**:
       - Confirm `TestOrchestratorLambda`'s IAM role is updated with `lambda:InvokeFunction` permission for the `MCPLambda` ARN.
   2.  **Orchestrator Lambda Unit Test (TDD Approach for new logic)**:
-      - In `TestOrchestratorLambda` unit tests, mock the `MCPLambda` client/invocation.
-      - Test scenarios where the orchestrator decides to call MCP (e.g., based on keywords in prompt).
-      - Verify the orchestrator calls the (mocked) `MCPLambda` with correct parameters.
-      - Verify the orchestrator correctly processes the (mocked) data returned by `MCPLambda` and incorporates it into the prompt for Claude, or uses it to structure the final response.
-- **Best_Practice_Check**: Orchestrator correctly handles `MCPLambda` responses (success/failure). Logic for using mock data is sound.
-- **Works_Properly_Indicator**: Unit tests for `TestOrchestratorLambda` pass, demonstrating successful mocked invocation of `MCPLambda` and correct usage of its returned data.
+      - **Mock Claude's response** to include a formatted action request (e.g., `ACTION: MCP_FETCH_PLAN_DETAILS(plan_name='XYZ')`).
+      - **Verify the Orchestrator correctly parses** this action request and extracts parameters.
+      - **Mock the `MCPLambda` client/invocation**.
+      - **Verify the Orchestrator invokes** the (mocked) `MCPLambda` with the correctly extracted parameters.
+      - **Mock the response from `MCPLambda`** (returning mock data).
+      - **Verify the Orchestrator constructs the second prompt** to Claude correctly, including the initial context and the (mocked) data returned by `MCPLambda`, clearly delineated.
+      - Test scenarios where Claude does _not_ request an action.
+- **Best_Practice_Check**: Orchestrator correctly parses action requests. Handles `MCPLambda` invocation/response. Constructs follow-up prompts correctly. Logic for deciding when to call MCP (i.e., based _only_ on Claude's request) is sound.
+- **Works_Properly_Indicator**: Unit tests for `TestOrchestratorLambda` pass, demonstrating successful parsing of action requests, mocked invocation of `MCPLambda`, and correct construction of subsequent prompts to Claude using the fetched data.
 
 ### Task 2.3: Test `TestOrchestratorLambda` -> `MCPLambda` -> Claude Flow
 
-- **Task_Name**: Test `TestOrchestratorLambda` -> `MCPLambda` -> Claude Flow
+- **Task_Name**: Test `TestOrchestratorLambda` -> `MCPLambda` -> Claude Flow (Full Loop)
 - **Original_Reference**: Adapts from TECH_TASK_040 (E2E component test)
-- **Technical_Objective**: Verify the end-to-end flow where `TestOrchestratorLambda` calls `MCPLambda`, gets mock data, and then calls Claude 3 Sonnet using this data.
+- **Technical_Objective**: Verify the end-to-end flow where `TestOrchestratorLambda` sends a prompt to Claude, Claude requests data via a formatted action, Orchestrator calls `MCPLambda`, gets mock data, calls Claude again with the data, and receives a final response reflecting the data.
 - **Testing_Strategy**:
   1.  **Manual Invocation of Deployed `TestOrchestratorLambda`**:
-      - Use the AWS Lambda console's test event or AWS CLI to invoke the deployed `TestOrchestratorLambda` with a prompt designed to trigger the MCP data fetching logic.
+      - Use the AWS Lambda console's test event or AWS CLI to invoke the deployed `TestOrchestratorLambda` with a prompt designed to likely require external data (e.g., "Tell me the details for customer 123's plan").
   2.  **Log Analysis (CloudWatch)**:
       - Trace the request through `TestOrchestratorLambda` logs:
-        - Verify it invoked `MCPLambda`.
-        - Confirm the mock data returned by `MCPLambda` (can be logged by orchestrator).
-      - Check `MCPLambda` logs to confirm it was invoked and returned data.
-      - Verify the prompt sent to Claude 3 Sonnet by `TestOrchestratorLambda` includes or reflects the mock data.
-      - Inspect Claude's response to see if it appropriately used the provided mock data.
-- **Works_Properly_Indicator**: Logs confirm the sequence of invocations. Claude's response demonstrates awareness/use of the mock data fetched via `MCPLambda`.
+        - Verify the initial prompt sent to Claude.
+        - **Verify Claude's first response includes the expected formatted action request** (e.g., `ACTION: MCP_FETCH...`).
+        - **Verify the Orchestrator logs the parsed action request/parameters.**
+        - Verify the Orchestrator invoked `MCPLambda` with these parameters.
+        - Check `MCPLambda` logs to confirm it was invoked and returned the expected mock data.
+        - **Verify the Orchestrator logs the context/data being sent back to Claude** in the second invocation.
+        - Verify the second prompt sent to Claude.
+        - Inspect Claude's final response to see if it appropriately used the provided mock data.
+- **Works_Properly_Indicator**: Logs confirm the full multi-step invocation sequence initiated by Claude's request. Claude's final response demonstrates awareness/use of the mock data fetched via `MCPLambda`.
 
 ## Phase 3: Basic Frontend Integration (Text-Based)
 
@@ -134,7 +146,7 @@ This document outlines the testing strategy for each technical task within the r
 
 - **Task_Name**: End-to-End Test (Text-Based)
 - **Original_Reference**: Adapts from TECH_TASK_040
-- **Technical_Objective**: Validate the complete text-based flow from the frontend user interface to Claude 3 Sonnet, including data fetching via `MCPLambda`.
+- **Technical_Objective**: Validate the complete text-based flow from the frontend user interface to Claude 3 Sonnet, including **LLM-driven data fetching via `MCPLambda`**.
   - **Testing_Strategy**:
   1.  **Scenario-Based Manual Testing**:
       - Use the frontend UI.
@@ -193,16 +205,19 @@ This document outlines the testing strategy for each technical task within the r
 - **Task_Name**: Implement Bidirectional Streaming Client for Amazon Nova Sonic
 - **Original_Reference**: TECH_TASK_011
 - **Technical_Objective**: Implement frontend logic to establish and manage a bidirectional audio stream with the Amazon Nova Sonic Bedrock endpoint.
+
   - **Testing_Strategy**:
+
   1.  **Initial Connection Test**: Verify the stream connects successfully to Nova Sonic. Log status.
   2.  **Simple Audio Send/Receive Test ("Echo" or Greeting)**:
-
 
       - Send a short audio stream (e.g., "Hello").
       - Verify Nova Sonic receives it, performs STT, and sends back a synthesized audio response (TTS of the transcript or a simple greeting).
       - Frontend should play this received audio.
+
   3.  **Error Handling Tests**: Simulate network errors. Verify graceful error handling.
   4.  **Stream Closure Test**: Ensure clean stream closure.
+
 - **Best_Practice_Check**: Adherence to AWS SDK for Bedrock streaming. Robust error handling.
 - **Works_Properly_Indicator**: Basic voice "conversation" (send audio, receive STT and then TTS audio) with Nova Sonic is possible.
 
@@ -242,7 +257,7 @@ This document outlines the testing strategy for each technical task within the r
 
 - **Task_Name**: End-to-End Voice Test
 - **Original_Reference**: TECH_TASK_040 (E2E Flow for Voice)
-- **Technical_Objective**: Validate the complete voice-enabled flow from user speaking to receiving a synthesized spoken response, including orchestration and MCP data fetching.
+- **Technical_Objective**: Validate the complete voice-enabled flow from user speaking to receiving a synthesized spoken response, including orchestration and **LLM-driven MCP data fetching**.
   - **Testing_Strategy**:
     1.  **Scenario-Based Manual Testing**:
     - Use predefined PoC use case scripts (voice versions).

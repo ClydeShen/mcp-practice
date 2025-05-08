@@ -34,7 +34,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:model/${ClaudeModelIdParameter}'
+              Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/${ClaudeModelIdParameter}'
         # IAM policy for CloudWatch Logs will be automatically created by SAM based on the function name
       Events:
         TestInvoke: # Optional: Defines an API Gateway trigger if needed later

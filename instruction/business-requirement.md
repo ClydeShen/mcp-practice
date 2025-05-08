@@ -30,27 +30,27 @@ The PoC will be developed and demonstrated in phases. Functional requirements ar
 
 _(Focus: Establishing backend reasoning, data fetching, and text-based orchestration)_
 
-- **POC_FUNC_002_Delegate_To_Claude**: When a customer's request (initially text-based, received by the Orchestration Layer) requires complex reasoning, task planning, or external data, the system MUST seamlessly delegate this to Claude 3 Sonnet.
+- **POC_FUNC_002_Delegate_To_Claude**: When a customer's request (initially text-based, received by the Orchestration Layer) requires complex reasoning or task planning, the system MUST seamlessly delegate this to Claude 3 Sonnet.
 
   - **Components_Responsible**: Orchestration Layer (e.g., Lambda), Claude 3 Sonnet (Bedrock).
-  - **Mechanism**: The Orchestration Layer is triggered (e.g., by an API call from a text frontend), passing necessary context (e.g., textual query, session identifiers). The Orchestration Layer invokes Claude 3 Sonnet.
+  - **Mechanism**: The Orchestration Layer is triggered, passing necessary context (e.g., textual query, session identifiers). The Orchestration Layer invokes Claude 3 Sonnet.
   - **Acceptance_Criteria**: Based on the textual input to the Orchestrator, Claude 3 Sonnet is correctly invoked with relevant input.
 
-- **POC_FUNC_003_Claude_Instructs_MCP**: Claude 3 Sonnet MUST be able to instruct the Model Context Protocol (MCP) layer to fetch relevant data from disparate backend sources.
+- **POC_FUNC_003_Claude_Instructs_MCP**: Claude 3 Sonnet MUST be able to **request** relevant data from backend sources **by signaling its intent (e.g., via a specific output format)** to the Orchestration Layer, which then instructs the MCP layer.
 
-  - **Components_Responsible**: Claude 3 Sonnet (Bedrock), MCP Layer (e.g., Lambda).
-  - **Mechanism**: Claude 3 Sonnet determines data needs and issues instructions to MCP (via the Orchestrator). MCP interfaces with defined data sources (e.g., Database, API Service, Knowledge Base - mock/simplified for PoC).
-  - **Acceptance_Criteria**: MCP successfully retrieves specified data based on instructions from Claude 3 Sonnet (relayed by Orchestrator). Data sources can be mock/simplified for PoC.
+  - **Components_Responsible**: Claude 3 Sonnet (Bedrock), Orchestration Layer (e.g., Lambda), MCP Layer (e.g., Lambda).
+  - **Mechanism**: Claude 3 Sonnet analyzes the query and context, determines data needs, and includes a structured request in its response to the Orchestrator. The Orchestrator parses this response, identifies the request, invokes the MCP layer with appropriate parameters. MCP interfaces with defined data sources (mock/simplified for PoC).
+  - **Acceptance_Criteria**: Orchestrator successfully parses Claude's data request. MCP successfully retrieves specified mock data based on parameters derived from Claude's request. Claude demonstrates ability to generate the request format when appropriate for a given query.
 
-- **POC_FUNC_004_Claude_Formulates_Text**: Claude 3 Sonnet MUST formulate a coherent and contextually appropriate _textual_ response or piece of information based on its reasoning and any data retrieved via MCP.
+- **POC_FUNC_004_Claude_Formulates_Text**: Claude 3 Sonnet MUST formulate a coherent and contextually appropriate _textual_ response or piece of information based on its reasoning, **potentially occurring after receiving necessary context requested via the MCP mechanism** and provided back to it by the Orchestrator.
 
-  - **Component_Responsible**: Claude 3 Sonnet (Bedrock).
-  - **Acceptance_Criteria**: Claude 3 Sonnet generates accurate textual output relevant to the complex query, suitable for display to a user or further processing.
+  - **Component_Responsible**: Claude 3 Sonnet (Bedrock), Orchestration Layer.
+  - **Acceptance_Criteria**: Claude 3 Sonnet generates accurate textual output relevant to the complex query, potentially incorporating data fetched via MCP, suitable for display to a user.
 
-- **POC_FUNC_006_Context_Awareness_Text**: The overall system (Orchestration Layer with Claude 3 Sonnet) MUST demonstrate contextual awareness within a single text-based session, incorporating information from previous turns.
+- **POC_FUNC_006_Context_Awareness_Text**: The overall system (Orchestration Layer with Claude 3 Sonnet) MUST demonstrate contextual awareness within a single text-based session, incorporating information from previous turns **and any data retrieved via MCP requests within that session**.
   - **Components_Responsible**: Orchestration Layer, Claude 3 Sonnet.
-  - **Mechanism**: Conversation history (textual queries, key decisions/responses) is maintained by the Orchestration Layer and provided as context to Claude 3 Sonnet for subsequent turns in the same text session.
-  - **Acceptance_Criteria**: The system correctly answers follow-up text questions that rely on information or context established earlier in the same text-based conversation.
+  - **Mechanism**: Conversation history (textual queries, key decisions/responses, **including MCP request/response cycles**) is maintained by the Orchestration Layer and provided as context to Claude 3 Sonnet.
+  - **Acceptance_Criteria**: The system correctly answers follow-up text questions that rely on information or context established earlier in the same text-based conversation, including context derived from MCP data fetches.
 
 ### Phase 3: Basic Frontend Integration (Text-Based)
 
@@ -64,7 +64,7 @@ _(Focus: Enabling user interaction with the backend via a text interface)_
     - Frontend sends the query to the Orchestration Layer via an API Gateway endpoint.
     - Frontend displays the textual response received from the Orchestration Layer.
 
-- **POC_FUNC_007_E2E_Text_Flow**: The PoC system's core components (Frontend for text I/O, API Gateway, Orchestration Layer, Claude 3 Sonnet on Bedrock, MCP) MUST be integrated to demonstrate a complete end-to-end text-based interaction flow, including delegation for complex queries and data lookup via MCP.
+- **POC_FUNC_007_E2E_Text_Flow**: The PoC system's core components (Frontend for text I/O, API Gateway, Orchestration Layer, Claude 3 Sonnet on Bedrock, MCP) MUST be integrated to demonstrate a complete end-to-end text-based interaction flow, including delegation for complex queries and **LLM-driven data lookup via the MCP mechanism**.
   - **Acceptance_Criteria**: A user can type a complex query via the text frontend that requires data lookup; the system processes it through all defined Phase 1-3 components, and the user receives a relevant textual answer.
 
 ### Phase 4: Nova Sonic and Voice I/O Integration
@@ -80,7 +80,7 @@ _(Focus: Adding full voice capabilities)_
     - Amazon Nova Sonic converts the customer's streaming speech into text (STT).
     - The STT transcript is made available to the frontend application logic for further processing (e.g., sending to Orchestrator).
 
-- **POC_FUNC_002_Delegate_To_Orchestrator_From_Voice**: When a customer's voice request (converted to text by Nova Sonic STT) requires complex reasoning, task planning, or external data, the system (frontend application logic) MUST seamlessly delegate this by sending the transcript to the backend Orchestration Layer (which then uses Claude 3 Sonnet and MCP as per Phase 1&2).
+- **POC_FUNC_002_Delegate_To_Orchestrator_From_Voice**: When a customer's voice request (converted to text by Nova Sonic STT) requires complex reasoning, task planning, or external data, the system (frontend application logic) MUST seamlessly delegate this by sending the transcript to the backend Orchestration Layer (which then uses Claude 3 Sonnet and the **LLM-driven MCP mechanism** as per Phase 1&2).
 
   - **Components_Responsible**: Frontend application logic managing Nova Sonic stream, Orchestration Layer (e.g., Lambda), Claude 3 Sonnet (Bedrock), MCP Layer.
   - **Mechanism**: The STT transcript from Nova Sonic is sent by the frontend to the Orchestration Layer (via API Gateway). The Orchestration Layer then proceeds as defined in POC_FUNC_002_Delegate_To_Claude, POC_FUNC_003_Claude_Instructs_MCP, etc.
@@ -102,7 +102,7 @@ _(Focus: Adding full voice capabilities)_
   - **Mechanism**: Conversation history (transcripts, key decisions/responses from Orchestrator) is maintained by the Orchestration Layer and provided as context to Claude 3 Sonnet for subsequent turns. The frontend manages the continuity of the voice session with Nova Sonic.
   - **Acceptance_Criteria**: The system correctly answers follow-up voice questions that rely on information or context established earlier in the same voice conversation.
 
-- **POC_FUNC_007_E2E_Voice_Flow**: The PoC system's core components (Frontend for voice streaming, Amazon Nova Sonic on Bedrock, API Gateway, Orchestration Layer, Claude 3 Sonnet on Bedrock, MCP) MUST be integrated to demonstrate a complete end-to-end voice interaction flow, including delegation for complex queries and data lookup.
+- **POC_FUNC_007_E2E_Voice_Flow**: The PoC system's core components (Frontend for voice streaming, Amazon Nova Sonic on Bedrock, API Gateway, Orchestration Layer, Claude 3 Sonnet on Bedrock, MCP) MUST be integrated to demonstrate a complete end-to-end voice interaction flow, including delegation for complex queries and **LLM-driven data lookup via the MCP mechanism**.
   - **Acceptance_Criteria**: A customer can ask a complex question via voice that requires data lookup; the system processes it through all defined components (Nova Sonic STT -> Frontend -> Orchestrator -> MCP -> Claude -> Orchestrator -> Frontend -> Nova Sonic TTS), and the customer receives a relevant, synthesized spoken answer.
 
 ### Overarching Functional Goals (Applicable to all phases)
