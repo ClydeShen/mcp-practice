@@ -8,7 +8,12 @@
     "build:frontend": "pnpm --filter frontend run build",
     "start:frontend": "pnpm --filter frontend run start",
     "lint:frontend": "pnpm --filter frontend run lint",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean:claude": "pnpm --filter @one-nz-poc/test-orchestrator-lambda run clean",
+    "build:claude": "pnpm --filter @one-nz-poc/test-orchestrator-lambda run build",
+    "package:claude": "pnpm --filter @one-nz-poc/test-orchestrator-lambda run package",
+    "deploy:claude": "pnpm --filter @one-nz-poc/test-orchestrator-lambda run deploy",
+    "redeploy:claude": "pnpm run clean:claude && pnpm run build:claude && pnpm run package:claude && pnpm run deploy:claude"
   },
   "keywords": [],
   "author": "",
