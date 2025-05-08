@@ -16,6 +16,7 @@ interface LambdaEvent {
   prompt: string;
 }
 
+// lambda handler
 export const handler: Handler<LambdaEvent, APIGatewayProxyResult> = async (
   event
 ) => {
