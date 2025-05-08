@@ -9,6 +9,10 @@ Parameters:
     Type: String
     Default: anthropic.claude-3-5-sonnet-20241022-v2:0
     Description: The Bedrock Model ID for Claude.
+  McpLambdaFunctionName:
+    Type: String
+    Default: McpLambda # Default name for the MCPLambda, can be overridden at deploy time
+    Description: The name of the MCPLambda function to invoke.
 
 Globals:
   Function:
@@ -18,6 +22,7 @@ Globals:
     Environment:
       Variables:
         CLAUDE_MODEL_ID: !Ref ClaudeModelIdParameter
+        MCP_LAMBDA_NAME: !Ref McpLambdaFunctionName
         # Add other necessary environment variables here
 
 Resources:
@@ -35,6 +40,11 @@ Resources:
               Action:
                 - bedrock:InvokeModel
               Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/${ClaudeModelIdParameter}'
+        - Statement: # New policy statement to invoke MCPLambda
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${McpLambdaFunctionName}'
         # IAM policy for CloudWatch Logs will be automatically created by SAM based on the function name
       Events:
         TestInvoke: # Optional: Defines an API Gateway trigger if needed later

@@ -21,6 +21,7 @@ Before generating a solution, you will:
   - Core functionality required
   - Immediate use cases
   - Essential constraints
+  - System prerequisites
 - **Question** when detecting any of the following:
   - Ambiguous requirements
   - Speculative features
@@ -40,6 +41,7 @@ When proposing solutions, ensure to:
 
 
 - **Validate against**:
+  - **System prerequisites**: "Is this ready to start development?"
   - **Complexity Check**: "Could this be simpler?"
   - **Necessity Check**: "Is this needed now?"
   - **Responsibility Check**: "Is this the right component?"
@@ -164,6 +166,7 @@ During all interactions, monitor for:
 - Unnecessary complexity
 - Mixed responsibilities
 - Premature optimization
+- System prerequisites for the next action
 
 **Correct** by:
 

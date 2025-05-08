@@ -1,0 +1,113 @@
+{
+  "customerPlanInfo": {
+    "CUST1001": {
+      "name": "Aroha Patel",
+      "planName": "Unlimited Talk & Text NZ",
+      "dataAllowanceMB": 51200,
+      "dataUsedMB": 15360,
+      "nextBillingDate": "2024-08-15",
+      "loyaltyTier": "Gold"
+    },
+    "CUST1002": {
+      "name": "Ben Smith",
+      "planName": "Prepay Casual",
+      "balanceNZD": 10.5,
+      "lastTopUpDate": "2024-07-20",
+      "bonusDataMB": 500
+    },
+    "CUST1003": {
+      "name": "Mereana Davis",
+      "planName": "Fibre Max",
+      "broadbandType": "Fibre",
+      "speedTier": "900/500 Mbps",
+      "contractEndDate": "2025-01-31",
+      "currentIssues": ["Intermittent connection reported on 2024-07-28"]
+    },
+    "CUST1004": {
+      "name": "David Lee",
+      "planName": "Business Connect Pro",
+      "accountManager": "Sarah Wilson",
+      "numberOfLines": 5,
+      "monthlySpendNZD": 250.0
+    }
+  },
+  "productInfo": {
+    "PROD001": {
+      "productName": "SuperFast Fibre",
+      "category": "Broadband",
+      "priceNZD": 89.99,
+      "priceFrequency": "monthly",
+      "description": "Ultra-fast fibre broadband perfect for streaming and gaming.",
+      "features": [
+        "Unlimited data",
+        "Free modem",
+        "Standard installation included"
+      ],
+      "availability": "Available in most urban areas"
+    },
+    "PROD002": {
+      "productName": "Mobile Protect Insurance",
+      "category": "Value-Added Service",
+      "priceNZD": 15.0,
+      "priceFrequency": "monthly",
+      "description": "Comprehensive insurance for your mobile device against accidental damage and theft.",
+      "coverageDetails": [
+        "Cracked screens",
+        "Liquid damage",
+        "Theft",
+        "Loss (optional add-on)"
+      ]
+    },
+    "PROD003": {
+      "productName": "One NZ Smart Plan",
+      "category": "Mobile Plan",
+      "priceNZD": 60.0,
+      "priceFrequency": "monthly",
+      "description": "A flexible mobile plan with generous data, talk, and text. Includes 5G access.",
+      "features": [
+        "20GB 5G Data",
+        "Unlimited NZ/AU Calls & Texts",
+        "Hotspot included",
+        "International Roaming options"
+      ]
+    },
+    "PROD004": {
+      "productName": "Global Roaming Pass - 7 Day",
+      "category": "Travel",
+      "priceNZD": 25.0,
+      "priceFrequency": "per pass",
+      "description": "Stay connected in over 100 destinations for 7 days.",
+      "includedDestinations": ["Australia", "USA", "UK", "Canada", "Fiji"]
+    }
+  },
+  "knowledgeBase": {
+    "KB001": {
+      "title": "How to set up voicemail",
+      "category": "Mobile Self-Service",
+      "steps": [
+        "Dial 707 from your One NZ mobile.",
+        "Follow the voice prompts to set your PIN and record your greeting."
+      ],
+      "lastUpdated": "2024-05-10"
+    },
+    "KB002": {
+      "title": "Troubleshooting no internet connection (Fibre)",
+      "category": "Broadband Support",
+      "commonIssues": [
+        {
+          "issue": "No lights on modem",
+          "solution": "Check power supply to modem. Ensure ONT is powered on."
+        },
+        {
+          "issue": "Red 'Fail' light on ONT",
+          "solution": "Contact One NZ support with your ONT serial number."
+        },
+        {
+          "issue": "Cannot connect to Wi-Fi",
+          "solution": "Restart modem. Check Wi-Fi password. Try connecting via ethernet cable."
+        }
+      ],
+      "lastUpdated": "2024-06-20"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM template for the Model Context Protocol (MCP) Lambda.
+  This Lambda will serve mock data based on input, simulating the MCP layer.
+
+Globals:
+  Function:
+    Timeout: 30 # Default timeout for all functions
+    MemorySize: 256 # Default memory size
+    Runtime: nodejs18.x # Default runtime
+
+Resources:
+  McpLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: McpLambda # Explicit function name
+      CodeUri: ./ # Points to the root of MCPLambda, assuming build places files in dist/ or SAM handles TS
+      Handler: dist/index.handler # Assuming output from tsc is in 'dist' and main file is index.ts
+      # Environment: # Optional: Example if you wanted to pass the mock data file path
+      #   Variables:
+      #     MOCK_DATA_PATH: src/data/mock-data.json
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/McpLambda:*'
+      # If the Lambda needs to be triggered by API Gateway, add an Events section here
+      # Events:
+      #   MCPEvent:
+      #     Type: Api
+      #     Properties:
+      #       Path: /mcp
+      #       Method: POST
+
+Outputs:
+  McpLambdaArn:
+    Description: 'ARN of the MCPLambda function'
+    Value: !GetAtt McpLambdaFunction.Arn
+  McpLambdaIamRoleArn:
+    Description: 'IAM Role ARN for the MCPLambda function'
+    Value: !GetAtt McpLambdaFunctionRole.Arn # SAM auto-creates a role <FunctionName>Role or similar

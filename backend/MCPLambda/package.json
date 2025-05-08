@@ -1,0 +1,22 @@
+{
+  "name": "@one-nz-poc/mcp-lambda",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist packaged.yaml .aws-sam",
+    "build": "tsc && cpx \"src/data/**/*.json\" dist/data",
+    "prepackage": "npm run build",
+    "package": "sam package --template-file template.yaml --s3-bucket YOUR_SAM_DEPLOYMENT_BUCKET_NAME --output-template-file packaged.yaml",
+    "predeploy": "npm run package",
+    "deploy": "sam deploy --template-file packaged.yaml --stack-name McpLambdaStack --capabilities CAPABILITY_IAM --parameter-overrides Stage=dev"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^20.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0",
+    "cpx": "^1.5.0"
+  }
+}
